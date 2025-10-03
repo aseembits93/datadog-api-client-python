@@ -105,14 +105,12 @@ class ApiException(OpenApiException):
 
     def __str__(self):
         """Custom error messages for exception"""
-        error_message = "({0})\n" "Reason: {1}\n".format(self.status, self.reason)
+        parts = [f"({self.status})\nReason: {self.reason}\n"]
         if self.headers:
-            error_message += "HTTP response headers: {0}\n".format(self.headers)
-
+            parts.append(f"HTTP response headers: {self.headers}\n")
         if self.body:
-            error_message += "HTTP response body: {0}\n".format(self.body)
-
-        return error_message
+            parts.append(f"HTTP response body: {self.body}\n")
+        return ''.join(parts)
 
 
 class NotFoundException(ApiException):
