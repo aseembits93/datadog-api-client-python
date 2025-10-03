@@ -378,8 +378,7 @@ class ApplicationSecurityApi:
 
         :rtype: ApplicationSecurityWafCustomRuleListResponse
         """
-        kwargs: Dict[str, Any] = {}
-        return self._list_application_security_waf_custom_rules_endpoint.call_with_http_info(**kwargs)
+        return self._list_application_security_waf_custom_rules_endpoint.call_with_http_info()
 
     def list_application_security_waf_exclusion_filters(
         self,
