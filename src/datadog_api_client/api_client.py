@@ -623,7 +623,7 @@ class Endpoint:
         settings: Dict[str, Any],
         params_map: Dict[str, Dict[str, Any]],
         headers_map: Dict[str, List[str]],
-        api_client: ApiClient,
+        api_client: 'ApiClient',
     ):
         """Creates an endpoint.
 
@@ -778,24 +778,28 @@ class Endpoint:
         return host
 
     def call_with_http_info(self, **kwargs):
-        host = self._validate_and_get_host(kwargs)
+        # Optimize: use local variables for frequently-accessed attributes to reduce lookup overhead
+        settings = self.settings
+        api_client = self.api_client
 
+        host = self._validate_and_get_host(kwargs)
         params = self.gather_params(kwargs)
 
-        return self.api_client.call_api(
-            self.settings["endpoint_path"],
-            self.settings["http_method"],
+        configuration = api_client.configuration
+        return api_client.call_api(
+            settings["endpoint_path"],
+            settings["http_method"],
             params["path"],
             params["query"],
             params["header"],
             body=params["body"],
             post_params=params["form"],
             files=params["file"],
-            response_type=self.settings["response_type"],
-            check_type=self.api_client.configuration.check_return_type,
-            return_http_data_only=self.api_client.configuration.return_http_data_only,
-            preload_content=self.api_client.configuration.preload_content,
-            request_timeout=self.api_client.configuration.request_timeout,
+            response_type=settings["response_type"],
+            check_type=configuration.check_return_type,
+            return_http_data_only=configuration.return_http_data_only,
+            preload_content=configuration.preload_content,
+            request_timeout=configuration.request_timeout,
             host=host,
             collection_formats=params["collection_format"],
         )
