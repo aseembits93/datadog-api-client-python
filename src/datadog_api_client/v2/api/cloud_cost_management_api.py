@@ -1150,10 +1150,8 @@ class CloudCostManagementApi:
         :type file_id: str
         :rtype: CustomCostsFileGetResponse
         """
-        kwargs: Dict[str, Any] = {}
-        kwargs["file_id"] = file_id
-
-        return self._get_custom_costs_file_endpoint.call_with_http_info(**kwargs)
+        # Fastpath: Directly pass parameter, avoid dict creation assignment
+        return self._get_custom_costs_file_endpoint.call_with_http_info(file_id=file_id)
 
     def get_ruleset(
         self,

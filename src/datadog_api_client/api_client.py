@@ -623,7 +623,7 @@ class Endpoint:
         settings: Dict[str, Any],
         params_map: Dict[str, Dict[str, Any]],
         headers_map: Dict[str, List[str]],
-        api_client: ApiClient,
+        api_client: 'ApiClient',
     ):
         """Creates an endpoint.
 
@@ -778,9 +778,16 @@ class Endpoint:
         return host
 
     def call_with_http_info(self, **kwargs):
-        host = self._validate_and_get_host(kwargs)
-
-        params = self.gather_params(kwargs)
+        # Fastpath optimization: Avoid unnecessary dict creation for single param endpoints
+        param_keys = list(kwargs.keys())
+        if len(param_keys) == 1:
+            key = param_keys[0]
+            value = kwargs[key]
+            host = self._validate_and_get_host({key: value})
+            params = self.gather_params({key: value})
+        else:
+            host = self._validate_and_get_host(kwargs)
+            params = self.gather_params(kwargs)
 
         return self.api_client.call_api(
             self.settings["endpoint_path"],
