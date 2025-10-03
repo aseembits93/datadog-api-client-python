@@ -364,10 +364,7 @@ class AgentlessScanningApi:
         :type subscription_id: str
         :rtype: None
         """
-        kwargs: Dict[str, Any] = {}
-        kwargs["subscription_id"] = subscription_id
-
-        return self._delete_azure_scan_options_endpoint.call_with_http_info(**kwargs)
+        return self._delete_azure_scan_options_endpoint.call_with_http_info(subscription_id=subscription_id)
 
     def get_aws_on_demand_task(
         self,
