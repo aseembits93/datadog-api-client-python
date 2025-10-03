@@ -623,7 +623,7 @@ class Endpoint:
         settings: Dict[str, Any],
         params_map: Dict[str, Dict[str, Any]],
         headers_map: Dict[str, List[str]],
-        api_client: ApiClient,
+        api_client: "ApiClient",
     ):
         """Creates an endpoint.
 
@@ -653,6 +653,7 @@ class Endpoint:
         :param api_client API client instance.
         :type api_client: ApiClient
         """
+        # Direct attribute assignments are fastest in Python
         self.settings = settings
         self.params_map = params_map
         self.headers_map = headers_map
@@ -778,11 +779,15 @@ class Endpoint:
         return host
 
     def call_with_http_info(self, **kwargs):
-        host = self._validate_and_get_host(kwargs)
+        # Local variable usages improve attribute lookup time
+        _validate_and_get_host = self._validate_and_get_host
+        _gather_params = self.gather_params
+        _call_api = self.api_client.call_api
 
-        params = self.gather_params(kwargs)
+        host = _validate_and_get_host(kwargs)
+        params = _gather_params(kwargs)
 
-        return self.api_client.call_api(
+        return _call_api(
             self.settings["endpoint_path"],
             self.settings["http_method"],
             params["path"],
