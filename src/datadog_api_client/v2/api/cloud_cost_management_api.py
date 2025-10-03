@@ -1217,8 +1217,7 @@ class CloudCostManagementApi:
 
         :rtype: AzureUCConfigsResponse
         """
-        kwargs: Dict[str, Any] = {}
-        return self._list_cost_azure_uc_configs_endpoint.call_with_http_info(**kwargs)
+        return self._list_cost_azure_uc_configs_endpoint.call_with_http_info()
 
     def list_cost_gcp_usage_cost_configs(
         self,
