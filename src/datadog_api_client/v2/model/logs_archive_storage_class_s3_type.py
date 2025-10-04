@@ -11,6 +11,10 @@ from datadog_api_client.model_utils import (
 
 from typing import ClassVar
 
+_OPENAPI_TYPES_LOGSARCHIVESTORAGECLASSS3TYPE = {
+    "value": (str,),
+}
+
 
 class LogsArchiveStorageClassS3Type(ModelSimple):
     """
@@ -35,9 +39,8 @@ class LogsArchiveStorageClassS3Type(ModelSimple):
 
     @cached_property
     def openapi_types(_):
-        return {
-            "value": (str,),
-        }
+        # Move the dictionary creation to a constant to avoid repeated instantiation
+        return _OPENAPI_TYPES_LOGSARCHIVESTORAGECLASSS3TYPE
 
 
 LogsArchiveStorageClassS3Type.STANDARD = LogsArchiveStorageClassS3Type("STANDARD")
