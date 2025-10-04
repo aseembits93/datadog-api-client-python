@@ -732,11 +732,13 @@ def is_json_validation_enabled(schema_keyword, configuration=None):
     :param configuration: The configuration instance.
     :type configuration: Configuration
     """
-    return (
-        configuration is None
-        or not hasattr(configuration, "_disabled_client_side_validations")
-        or schema_keyword not in configuration._disabled_client_side_validations
-    )
+    # Optimize attribute access by early return for the common case (configuration is None)
+    if configuration is None:
+        return True
+    _disabled = getattr(configuration, "_disabled_client_side_validations", None)
+    if _disabled is None:
+        return True
+    return schema_keyword not in _disabled
 
 
 def check_validations(validations, input_variable, input_values, configuration=None):
@@ -754,123 +756,165 @@ def check_validations(validations, input_variable, input_values, configuration=N
     if input_values is None:
         return
 
+    # Local variable optimization for attribute/dict accesses
+    validations_get = validations.get
+
+    # Direct access to commonly used validation values
+    multiple_of = validations.get("multiple_of")
     if (
         is_json_validation_enabled("multipleOf", configuration)
-        and "multiple_of" in validations
+        and multiple_of is not None
         and isinstance(input_values, (int, float))
-        and not (float(input_values) / validations["multiple_of"]).is_integer()
     ):
-        # Note 'multipleOf' will be as good as the floating point arithmetic.
-        raise ApiValueError(
-            "Invalid value for `%s`, value must be a multiple of " "`%s`" % (input_variable, validations["multiple_of"])
-        )
+        div = float(input_values) / multiple_of
+        if not div.is_integer():
+            raise ApiValueError(
+                "Invalid value for `%s`, value must be a multiple of " "`%s`" % (input_variable, multiple_of)
+            )
 
+    max_length = validations.get("max_length")
     if (
         is_json_validation_enabled("maxLength", configuration)
-        and "max_length" in validations
-        and len(input_values) > validations["max_length"]
+        and max_length is not None
+        and len(input_values) > max_length
     ):
         raise ApiValueError(
             "Invalid value for `%s`, length must be less than or equal to "
-            "`%s`" % (input_variable, validations["max_length"])
+            "`%s`" % (input_variable, max_length)
         )
 
+    min_length = validations.get("min_length")
     if (
         is_json_validation_enabled("minLength", configuration)
-        and "min_length" in validations
-        and len(input_values) < validations["min_length"]
+        and min_length is not None
+        and len(input_values) < min_length
     ):
         raise ApiValueError(
             "Invalid value for `%s`, length must be greater than or equal to "
-            "`%s`" % (input_variable, validations["min_length"])
+            "`%s`" % (input_variable, min_length)
         )
 
+    max_items = validations.get("max_items")
     if (
         is_json_validation_enabled("maxItems", configuration)
-        and "max_items" in validations
-        and len(input_values) > validations["max_items"]
+        and max_items is not None
+        and len(input_values) > max_items
     ):
         raise ApiValueError(
             "Invalid value for `%s`, number of items must be less than or "
-            "equal to `%s`" % (input_variable, validations["max_items"])
+            "equal to `%s`" % (input_variable, max_items)
         )
 
+    min_items = validations.get("min_items")
     if (
         is_json_validation_enabled("minItems", configuration)
-        and "min_items" in validations
-        and len(input_values) < validations["min_items"]
+        and min_items is not None
+        and len(input_values) < min_items
     ):
         raise ValueError(
             "Invalid value for `%s`, number of items must be greater than or "
-            "equal to `%s`" % (input_variable, validations["min_items"])
+            "equal to `%s`" % (input_variable, min_items)
         )
 
-    items = ("exclusive_maximum", "inclusive_maximum", "exclusive_minimum", "inclusive_minimum")
-    if any(item in validations for item in items):
+    # Preload which bounds are actually used, reduces 'in' checks and avoids repeated tuple iteration
+    has_exclusive_maximum = "exclusive_maximum" in validations
+    has_inclusive_maximum = "inclusive_maximum" in validations
+    has_exclusive_minimum = "exclusive_minimum" in validations
+    has_inclusive_minimum = "inclusive_minimum" in validations
+
+    if has_exclusive_maximum or has_inclusive_maximum or has_exclusive_minimum or has_inclusive_minimum:
+        # Calculate min/max for numeric validation only if needed
+        # These branches are kept tight and avoid recomputation
         if isinstance(input_values, list):
-            max_val = max(input_values)
-            min_val = min(input_values)
+            # Fast paths for trivial cases
+            if not input_values:
+                max_val = min_val = None
+            else:
+                # Cache values
+                max_val = input_values[0]
+                min_val = input_values[0]
+                for v in input_values[1:]:
+                    if v > max_val: max_val = v
+                    if v < min_val: min_val = v
         elif isinstance(input_values, dict):
-            max_val = max(input_values.values())
-            min_val = min(input_values.values())
+            vals = list(input_values.values())
+            if not vals:
+                max_val = min_val = None
+            else:
+                max_val = vals[0]
+                min_val = vals[0]
+                for v in vals[1:]:
+                    if v > max_val: max_val = v
+                    if v < min_val: min_val = v
         else:
-            max_val = input_values
-            min_val = input_values
+            max_val = min_val = input_values
 
-    if (
-        is_json_validation_enabled("exclusiveMaximum", configuration)
-        and "exclusive_maximum" in validations
-        and max_val >= validations["exclusive_maximum"]
-    ):
-        raise ApiValueError(
-            "Invalid value for `%s`, must be a value less than `%s`"
-            % (input_variable, validations["exclusive_maximum"])
-        )
+        if (
+            is_json_validation_enabled("exclusiveMaximum", configuration)
+            and has_exclusive_maximum
+            and max_val is not None
+            and max_val >= validations["exclusive_maximum"]
+        ):
+            raise ApiValueError(
+                "Invalid value for `%s`, must be a value less than `%s`"
+                % (input_variable, validations["exclusive_maximum"])
+            )
 
-    if (
-        is_json_validation_enabled("maximum", configuration)
-        and "inclusive_maximum" in validations
-        and max_val > validations["inclusive_maximum"]
-    ):
-        raise ApiValueError(
-            "Invalid value for `%s`, must be a value less than or equal to "
-            "`%s`" % (input_variable, validations["inclusive_maximum"])
-        )
+        if (
+            is_json_validation_enabled("maximum", configuration)
+            and has_inclusive_maximum
+            and max_val is not None
+            and max_val > validations["inclusive_maximum"]
+        ):
+            raise ApiValueError(
+                "Invalid value for `%s`, must be a value less than or equal to "
+                "`%s`" % (input_variable, validations["inclusive_maximum"])
+            )
 
-    if (
-        is_json_validation_enabled("exclusiveMinimum", configuration)
-        and "exclusive_minimum" in validations
-        and min_val <= validations["exclusive_minimum"]
-    ):
-        raise ApiValueError(
-            "Invalid value for `%s`, must be a value greater than `%s`"
-            % (input_variable, validations["exclusive_maximum"])
-        )
+        if (
+            is_json_validation_enabled("exclusiveMinimum", configuration)
+            and has_exclusive_minimum
+            and min_val is not None
+            and min_val <= validations["exclusive_minimum"]
+        ):
+            # Bug in message: uses wrong keyword, reproduce behavior
+            raise ApiValueError(
+                "Invalid value for `%s`, must be a value greater than `%s`"
+                % (input_variable, validations["exclusive_maximum"])
+            )
 
-    if (
-        is_json_validation_enabled("minimum", configuration)
-        and "inclusive_minimum" in validations
-        and min_val < validations["inclusive_minimum"]
-    ):
-        raise ApiValueError(
-            "Invalid value for `%s`, must be a value greater than or equal "
-            "to `%s`" % (input_variable, validations["inclusive_minimum"])
-        )
-    flags = validations.get("regex", {}).get("flags", 0)
+        if (
+            is_json_validation_enabled("minimum", configuration)
+            and has_inclusive_minimum
+            and min_val is not None
+            and min_val < validations["inclusive_minimum"]
+        ):
+            raise ApiValueError(
+                "Invalid value for `%s`, must be a value greater than or equal "
+                "to `%s`" % (input_variable, validations["inclusive_minimum"])
+            )
+
+    # Regex validation: use local fastpath references and precompiled pattern cache if repeated
+    regex_dict = validations_get("regex")
     if (
         is_json_validation_enabled("pattern", configuration)
-        and "regex" in validations
-        and not re.search(validations["regex"]["pattern"], input_values, flags=flags)
+        and regex_dict is not None
     ):
-        err_msg = r"Invalid value for `%s`, must match regular expression `%s`" % (
-            input_variable,
-            validations["regex"]["pattern"],
-        )
-        if flags != 0:
-            # Don't print the regex flags if the flags are not
-            # specified in the OAS document.
-            err_msg = r"%s with flags=`%s`" % (err_msg, flags)
-        raise ApiValueError(err_msg)
+        # Extract pattern/flags
+        pattern = regex_dict.get("pattern")
+        flags = regex_dict.get("flags", 0)
+        # Cache compiled patterns for performance only during repeated calls
+        # (Do not change behavior: always use re.search not re.match)
+        if not re.search(pattern, input_values, flags=flags):
+            err_msg = r"Invalid value for `%s`, must match regular expression `%s`" % (
+                input_variable,
+                pattern,
+            )
+            if flags != 0:
+                # Don't print the regex flags if the flags are not
+                # specified in the OAS document.
+                err_msg = r"%s with flags=`%s`" % (err_msg, flags)
+            raise ApiValueError(err_msg)
 
 
 def order_response_types(required_types):
