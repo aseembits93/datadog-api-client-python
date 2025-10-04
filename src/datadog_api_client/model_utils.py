@@ -661,36 +661,37 @@ def get_simple_class(input_value):
     :param input_value: The item for which we will return the simple class.
     :type input_value: class/class_instance
     """
-    if isinstance(input_value, type):
-        # input_value is a class
+    # Fast path: Check most common/likely types first
+    if isinstance(input_value, type):   # input_value is a class
         return input_value
-    elif isinstance(input_value, tuple):
+    # Use local variables for functions to eliminate repeated global lookups
+    _isinstance = isinstance
+    _type = type
+    # A fast dispatch using a tuple check, then a chain of isinstance checks ordered for typical data
+    if _isinstance(input_value, tuple):
         return tuple
-    elif isinstance(input_value, list):
+    if _isinstance(input_value, list):
         return list
-    elif isinstance(input_value, dict):
+    if _isinstance(input_value, dict):
         return dict
-    elif input_value is None:
+    if input_value is None:
         return none_type
-    elif isinstance(input_value, file_type):
-        return file_type
-    elif isinstance(input_value, bool):
-        # this must be higher than the int check because
-        # isinstance(True, int) == True
+    if _isinstance(input_value, bool):  # must be before int
         return bool
-    elif isinstance(input_value, int):
+    # It's rare for file_type to occur, so moved after common types above
+    if _isinstance(input_value, int):
         return int
-    elif isinstance(input_value, datetime):
-        # this must be higher than the date check because
-        # isinstance(datetime_instance, date) == True
+    if _isinstance(input_value, datetime):  # datetime must be before date
         return datetime
-    elif isinstance(input_value, date):
+    if _isinstance(input_value, date):
         return date
-    elif isinstance(input_value, str):
+    if _isinstance(input_value, str):
         return str
-    elif isinstance(input_value, UUID):
+    if _isinstance(input_value, UUID):
         return UUID
-    return type(input_value)
+    if _isinstance(input_value, file_type):
+        return file_type
+    return _type(input_value)
 
 
 def check_allowed_values(allowed_values, input_variable, input_values):
@@ -926,16 +927,32 @@ def remove_uncoercible(required_types_classes, current_item, spec_property_namin
     """
     current_type_simple = get_simple_class(current_item)
 
+    # Use a local reference for tuple lookup for performance
+    _issubclass = issubclass
+    _isinstance = isinstance
+
+    # Use local caching for type pairs to reduce repeated lookup
+    upconversion_type_pairs = UPCONVERSION_TYPE_PAIRS
+    coercible_type_pairs = COERCIBLE_TYPE_PAIRS[spec_property_naming]
+
     results_classes = []
+    # Prepare the tuple lookup set for faster "in" checks
+    if must_convert:
+        coercible_type_pairs_set = set(coercible_type_pairs)
+    else:
+        coercible_type_pairs_set = ()
+    upconversion_type_pairs_set = set(upconversion_type_pairs)
+
     for required_type_class in required_types_classes:
         # convert our models to OpenApiModel
         required_type_class_simplified = required_type_class
-        if isinstance(required_type_class_simplified, type):
-            if issubclass(required_type_class_simplified, ModelComposed):
+        if _isinstance(required_type_class_simplified, type):
+            # Direct isinstance and issubclass checks rather than a chain
+            if _issubclass(required_type_class_simplified, ModelComposed):
                 required_type_class_simplified = ModelComposed
-            elif issubclass(required_type_class_simplified, ModelNormal):
+            elif _issubclass(required_type_class_simplified, ModelNormal):
                 required_type_class_simplified = ModelNormal
-            elif issubclass(required_type_class_simplified, ModelSimple):
+            elif _issubclass(required_type_class_simplified, ModelSimple):
                 required_type_class_simplified = ModelSimple
 
         if required_type_class_simplified == current_type_simple:
@@ -943,9 +960,10 @@ def remove_uncoercible(required_types_classes, current_item, spec_property_namin
             continue
 
         class_pair = (current_type_simple, required_type_class_simplified)
-        if must_convert and class_pair in COERCIBLE_TYPE_PAIRS[spec_property_naming]:
+        # Use in-set lookup for big tuples for noticeable performance
+        if must_convert and class_pair in coercible_type_pairs_set:
             results_classes.append(required_type_class)
-        elif class_pair in UPCONVERSION_TYPE_PAIRS:
+        elif class_pair in upconversion_type_pairs_set:
             results_classes.append(required_type_class)
     return results_classes
 
