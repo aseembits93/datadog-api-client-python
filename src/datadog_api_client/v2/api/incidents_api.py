@@ -1800,7 +1800,12 @@ class IncidentsApi:
         if page_offset is not unset:
             kwargs["page_offset"] = page_offset
 
-        local_page_size = get_attribute_from_path(kwargs, "page_size", 10)
+        # Inline the logic to only call str.split(".") once, optimize lookups
+        if "page_size" in kwargs:
+            local_page_size = kwargs["page_size"]
+        else:
+            local_page_size = 10
+
         endpoint = self._search_incidents_endpoint
         set_attribute_from_path(kwargs, "page_size", local_page_size, endpoint.params_map)
         pagination = {

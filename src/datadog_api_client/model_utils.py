@@ -1717,5 +1717,6 @@ def set_attribute_from_path(obj, path, value, params_map):
         try:
             obj = obj[elt]
         except (KeyError, AttributeError):
-            obj = root()
+            obj[elt] = root()
+            obj = obj[elt]
     obj[last] = value
