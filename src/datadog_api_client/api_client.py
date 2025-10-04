@@ -623,7 +623,7 @@ class Endpoint:
         settings: Dict[str, Any],
         params_map: Dict[str, Dict[str, Any]],
         headers_map: Dict[str, List[str]],
-        api_client: ApiClient,
+        api_client: "ApiClient",
     ):
         """Creates an endpoint.
 
@@ -802,7 +802,6 @@ class Endpoint:
 
     def call_with_http_info_paginated(self, pagination):
         host = self._validate_and_get_host(pagination["kwargs"])
-
         return self.api_client.call_api_paginated(
             self.settings["endpoint_path"],
             self.settings["http_method"],
