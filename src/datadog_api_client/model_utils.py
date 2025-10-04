@@ -1708,14 +1708,20 @@ def set_attribute_from_path(obj, path, value, params_map):
     """Set an attribute at `path` with the given value."""
     elts = path.split(".")
     last = elts.pop(-1)
-    root = None
+    if not elts:
+        obj[last] = value
+        return
+    # Reuse current obj, walk/create dict-like structure
     for i, elt in enumerate(elts):
-        if i:
-            root = root.openapi_types[elt][0]
+        if i == 0:
+            type_ctor = params_map[elt]["openapi_types"][0]
         else:
-            root = params_map[elt]["openapi_types"][0]
+            type_ctor = root.openapi_types[elt][0]
         try:
-            obj = obj[elt]
+            next_obj = obj[elt]
         except (KeyError, AttributeError):
-            obj = root()
+            next_obj = type_ctor()
+            obj[elt] = next_obj  # ensure it's attached!
+        obj = next_obj
+        root = type_ctor
     obj[last] = value
