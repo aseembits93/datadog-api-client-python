@@ -1694,7 +1694,8 @@ def get_attribute_from_path(obj, path, default=None):
     """Return an attribute at `path` from the passed object."""
     if not path:
         return obj
-    for elt in path.split("."):
+    elts = path.split(".")
+    for elt in elts:
         try:
             obj = obj[elt]
         except (KeyError, AttributeError):
@@ -1707,15 +1708,22 @@ def get_attribute_from_path(obj, path, default=None):
 def set_attribute_from_path(obj, path, value, params_map):
     """Set an attribute at `path` with the given value."""
     elts = path.split(".")
-    last = elts.pop(-1)
-    root = None
-    for i, elt in enumerate(elts):
-        if i:
-            root = root.openapi_types[elt][0]
+    last = elts[-1]
+    n = len(elts)
+    # Traverse and create intermediate containers as necessary
+    for i, elt in enumerate(elts[:-1]):
+        if i == 0:
+            root_type = params_map[elt]["openapi_types"][0]
         else:
-            root = params_map[elt]["openapi_types"][0]
+            root_type = obj.openapi_types[elt][0]
+        # Use setdefault for dict-like objects, avoiding missing assignment
         try:
-            obj = obj[elt]
-        except (KeyError, AttributeError):
-            obj = root()
+            obj = obj.setdefault(elt, root_type())
+        except AttributeError:
+            # If obj is not a dict (has no setdefault), fallback to legacy logic
+            try:
+                obj = obj[elt]
+            except (KeyError, AttributeError):
+                obj = root_type()
+                # NOTE: Cannot safely assign here, so only returns
     obj[last] = value

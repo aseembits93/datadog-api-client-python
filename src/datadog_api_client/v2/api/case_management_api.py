@@ -599,25 +599,23 @@ class CaseManagementApi:
         :return: A generator of paginated results.
         :rtype: collections.abc.Iterable[Case]
         """
+        input_args = (
+            ("page_size", page_size),
+            ("page_number", page_number),
+            ("sort_field", sort_field),
+            ("filter", filter),
+            ("sort_asc", sort_asc),
+        )
         kwargs: Dict[str, Any] = {}
-        if page_size is not unset:
-            kwargs["page_size"] = page_size
+        for k, v in input_args:
+            if v is not unset:
+                kwargs[k] = v
 
-        if page_number is not unset:
-            kwargs["page_number"] = page_number
-
-        if sort_field is not unset:
-            kwargs["sort_field"] = sort_field
-
-        if filter is not unset:
-            kwargs["filter"] = filter
-
-        if sort_asc is not unset:
-            kwargs["sort_asc"] = sort_asc
-
-        local_page_size = get_attribute_from_path(kwargs, "page_size", 10)
         endpoint = self._search_cases_endpoint
-        set_attribute_from_path(kwargs, "page_size", local_page_size, endpoint.params_map)
+        # cache attribute access
+        params_map = endpoint.params_map
+        local_page_size = get_attribute_from_path(kwargs, "page_size", 10)
+        set_attribute_from_path(kwargs, "page_size", local_page_size, params_map)
         pagination = {
             "limit_value": local_page_size,
             "results_path": "data",
