@@ -10,7 +10,6 @@ from datadog_api_client.api_client import ApiClient, Endpoint as _Endpoint
 from datadog_api_client.configuration import Configuration
 from datadog_api_client.model_utils import (
     set_attribute_from_path,
-    get_attribute_from_path,
     UnsetType,
     unset,
 )
@@ -263,9 +262,11 @@ class PowerpackApi:
         if page_offset is not unset:
             kwargs["page_offset"] = page_offset
 
-        local_page_size = get_attribute_from_path(kwargs, "page_limit", 25)
+        # Avoids repeated path split and redundant get/set by keeping variable local
+        local_page_size = kwargs.get("page_limit", 25)
         endpoint = self._list_powerpacks_endpoint
-        set_attribute_from_path(kwargs, "page_limit", local_page_size, endpoint.params_map)
+        if "page_limit" not in kwargs or kwargs["page_limit"] != local_page_size:
+            set_attribute_from_path(kwargs, "page_limit", local_page_size, endpoint.params_map)
         pagination = {
             "limit_value": local_page_size,
             "results_path": "data",
