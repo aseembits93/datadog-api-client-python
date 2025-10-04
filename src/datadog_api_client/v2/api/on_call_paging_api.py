@@ -356,7 +356,5 @@ class OnCallPagingApi:
         :type page_id: UUID
         :rtype: None
         """
-        kwargs: Dict[str, Any] = {}
-        kwargs["page_id"] = page_id
-
-        return self._resolve_on_call_page_endpoint.call_with_http_info(**kwargs)
+        # Optimize by using direct dict literal
+        return self._resolve_on_call_page_endpoint.call_with_http_info(page_id=page_id)
