@@ -1657,14 +1657,15 @@ class IncidentsApi:
         kwargs: Dict[str, Any] = {}
         if include is not unset:
             kwargs["include"] = include
-
         if page_size is not unset:
             kwargs["page_size"] = page_size
-
+            local_page_size = page_size
+        else:
+            # Avoids the extra call to get_attribute_from_path in the default case.
+            local_page_size = 10
         if page_offset is not unset:
             kwargs["page_offset"] = page_offset
 
-        local_page_size = get_attribute_from_path(kwargs, "page_size", 10)
         endpoint = self._list_incidents_endpoint
         set_attribute_from_path(kwargs, "page_size", local_page_size, endpoint.params_map)
         pagination = {

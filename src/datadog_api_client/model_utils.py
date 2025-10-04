@@ -1708,14 +1708,19 @@ def set_attribute_from_path(obj, path, value, params_map):
     """Set an attribute at `path` with the given value."""
     elts = path.split(".")
     last = elts.pop(-1)
+    cur = obj
     root = None
+    # Drill down for nested dictionaries/classes
     for i, elt in enumerate(elts):
         if i:
             root = root.openapi_types[elt][0]
         else:
             root = params_map[elt]["openapi_types"][0]
+        # Try to drill deeper. If missing, assign new root.
         try:
-            obj = obj[elt]
+            next_obj = cur[elt]
         except (KeyError, AttributeError):
-            obj = root()
-    obj[last] = value
+            next_obj = root()
+            cur[elt] = next_obj
+        cur = next_obj
+    cur[last] = value
