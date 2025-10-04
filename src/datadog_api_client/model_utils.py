@@ -732,11 +732,13 @@ def is_json_validation_enabled(schema_keyword, configuration=None):
     :param configuration: The configuration instance.
     :type configuration: Configuration
     """
-    return (
-        configuration is None
-        or not hasattr(configuration, "_disabled_client_side_validations")
-        or schema_keyword not in configuration._disabled_client_side_validations
-    )
+    if configuration is None:
+        return True
+    try:
+        disabled_validations = configuration._disabled_client_side_validations
+    except AttributeError:
+        return True
+    return schema_keyword not in disabled_validations
 
 
 def check_validations(validations, input_variable, input_values, configuration=None):
