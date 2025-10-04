@@ -306,10 +306,7 @@ class OnCallPagingApi:
         :type page_id: UUID
         :rtype: None
         """
-        kwargs: Dict[str, Any] = {}
-        kwargs["page_id"] = page_id
-
-        return self._acknowledge_on_call_page_endpoint.call_with_http_info(**kwargs)
+        return self._acknowledge_on_call_page_endpoint.call_with_http_info(page_id=page_id)
 
     def create_on_call_page(
         self,
