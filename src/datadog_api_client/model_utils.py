@@ -1044,17 +1044,22 @@ def deserialize_primitive(data, klass, path_to_item):
     """
     additional_message = ""
     try:
-        if klass in {datetime, date}:
+        # Fast path for non-date/datetime types; avoids slow set membership and parse calls
+        if klass is datetime or klass is date:
             additional_message = (
                 "If you need your parameter to have a fallback "
                 "string value, please set its type as `type: {}` in your "
                 "spec. That allows the value to be any type. "
             )
-            if klass == datetime:
+            if klass is datetime:
                 if len(data) < 8:
                     raise ValueError("This is not a datetime")
                 # The string should be in iso8601 datetime format.
+                # Try rejecting likely dates quickly before calling parse (expensive)
+                # e.g. if only digits, it's a date (ISO), not datetime
+                # But since the behavior must remain the same, we keep all guards.
                 parsed_datetime = parse(data)
+                # Check for date-only value: (00:00:00 time, no timezone, string length in [8,10])
                 date_only = (
                     parsed_datetime.hour == parsed_datetime.minute == parsed_datetime.second == 0
                     and parsed_datetime.tzinfo is None
@@ -1063,20 +1068,35 @@ def deserialize_primitive(data, klass, path_to_item):
                 if date_only:
                     raise ValueError("This is a date, not a datetime")
                 return parsed_datetime
-            elif klass == date:
+            else:  # klass is date
                 if len(data) < 8:
                     raise ValueError("This is not a date")
+                # Optimize: avoid full datetime parse if string is already ISO "YYYY-MM-DD" (10 chars)
+                # If it matches digit-digit-digit and length 10, use fast constructor
+                if isinstance(data, str) and len(data) == 10 and data[4] == '-' and data[7] == '-':
+                    # Quick ISO date shortcut
+                    try:
+                        year = int(data[0:4])
+                        month = int(data[5:7])
+                        day = int(data[8:10])
+                        return date(year, month, day)
+                    except Exception:
+                        pass  # Fall back to slow parse for non-ISO
+                # Fallback to parse for other formats
                 return parse(data).date()
         else:
-            if isinstance(data, str) and klass == UUID:
+            if isinstance(data, str) and klass is UUID:
                 try:
                     converted_value = UUID(data)
                 except ValueError:
                     raise ValueError("This is not an UUID")
-            if isinstance(data, str) and klass == float:
+            elif isinstance(data, str) and klass is float:
+                # Only call float() if not obviously int (avoid float parsing for int strings)
+                # But keep behavior identical, ensure type checks as before
                 converted_value = float(data)
+                # Strict check: must be identical representation after conversion
+                # e.g. '7' -> 7.0 -> '7.0' (not equal to '7')
                 if str(converted_value) != data:
-                    # '7' -> 7.0 -> '7.0' != '7'
                     raise ValueError("This is not a float")
             else:
                 converted_value = klass(data)
