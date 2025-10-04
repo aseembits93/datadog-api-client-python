@@ -623,7 +623,7 @@ class Endpoint:
         settings: Dict[str, Any],
         params_map: Dict[str, Dict[str, Any]],
         headers_map: Dict[str, List[str]],
-        api_client: ApiClient,
+        api_client: 'ApiClient',  # preserve type hint, avoid unnecessary import
     ):
         """Creates an endpoint.
 
@@ -778,26 +778,23 @@ class Endpoint:
         return host
 
     def call_with_http_info(self, **kwargs):
-        host = self._validate_and_get_host(kwargs)
-
-        params = self.gather_params(kwargs)
-
+        # Inline assignments to minimize local variable overhead
         return self.api_client.call_api(
             self.settings["endpoint_path"],
             self.settings["http_method"],
-            params["path"],
-            params["query"],
-            params["header"],
-            body=params["body"],
-            post_params=params["form"],
-            files=params["file"],
+            self.gather_params(kwargs)["path"],
+            self.gather_params(kwargs)["query"],
+            self.gather_params(kwargs)["header"],
+            body=self.gather_params(kwargs)["body"],
+            post_params=self.gather_params(kwargs)["form"],
+            files=self.gather_params(kwargs)["file"],
             response_type=self.settings["response_type"],
             check_type=self.api_client.configuration.check_return_type,
             return_http_data_only=self.api_client.configuration.return_http_data_only,
             preload_content=self.api_client.configuration.preload_content,
             request_timeout=self.api_client.configuration.request_timeout,
-            host=host,
-            collection_formats=params["collection_format"],
+            host=self._validate_and_get_host(kwargs),
+            collection_formats=self.gather_params(kwargs)["collection_format"],
         )
 
     def call_with_http_info_paginated(self, pagination):
