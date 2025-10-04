@@ -66,12 +66,19 @@ class EntityV3DatastoreSpec(ModelNormal):
         :param type: The type of datastore.
         :type type: str, optional
         """
-        if component_of is not unset:
-            kwargs["component_of"] = component_of
-        if lifecycle is not unset:
-            kwargs["lifecycle"] = lifecycle
-        if tier is not unset:
-            kwargs["tier"] = tier
-        if type is not unset:
-            kwargs["type"] = type
+        # Optimize by eliminating repeated lookups of unset by storing as a local variable
+        _unset = unset
+
+        # Optimize by grouping assignments into a single dict update, reducing repeated dict lookups
+        if component_of is not _unset or lifecycle is not _unset or tier is not _unset or type is not _unset:
+            argmap = {}
+            if component_of is not _unset:
+                argmap["component_of"] = component_of
+            if lifecycle is not _unset:
+                argmap["lifecycle"] = lifecycle
+            if tier is not _unset:
+                argmap["tier"] = tier
+            if type is not _unset:
+                argmap["type"] = type
+            kwargs.update(argmap)
         super().__init__(kwargs)
