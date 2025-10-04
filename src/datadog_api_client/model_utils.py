@@ -951,12 +951,14 @@ def remove_uncoercible(required_types_classes, current_item, spec_property_namin
 
 
 def get_possible_classes(cls, from_server_context):
-    possible_classes = [cls]
+    # Fast path for from_server_context True
     if from_server_context:
-        return possible_classes
+        return [cls]
+    # Avoid unnecessary list allocation if ModelComposed subclass test could fail
     if issubclass(cls, ModelComposed):
-        possible_classes.extend(composed_model_input_classes(cls))
-    return possible_classes
+        # Use list concatenation instead of extend for fewer memory reallocations
+        return [cls] + composed_model_input_classes(cls)
+    return [cls]
 
 
 def get_required_type_classes(required_types_mixed, spec_property_naming):
@@ -979,19 +981,24 @@ def get_required_type_classes(required_types_mixed, spec_property_naming):
 
     :rtype: tuple
     """
+    # Preallocate output lists for efficiency
     valid_classes = []
     child_req_types_by_current_type = {}
     for required_type in required_types_mixed:
-        if isinstance(required_type, list):
+        typ = type(required_type)
+        if typ is list:
+            # Single append instead of repeated coercion via isinstance
             valid_classes.append(list)
             child_req_types_by_current_type[list] = required_type
-        elif isinstance(required_type, tuple):
+        elif typ is tuple:
             valid_classes.append(tuple)
             child_req_types_by_current_type[tuple] = required_type
-        elif isinstance(required_type, dict):
+        elif typ is dict:
             valid_classes.append(dict)
+            # Direct access using str as key instead of searching keys, as per original logic
             child_req_types_by_current_type[dict] = required_type[str]
         else:
+            # If required_type is a class, call get_possible_classes directly
             valid_classes.extend(get_possible_classes(required_type, spec_property_naming))
     return tuple(valid_classes), child_req_types_by_current_type
 
